@@ -96,7 +96,7 @@ void* do_work(void* args)
         stop = (int)(largest_d * first_thread_work) + (int)(tid * partition_size);
     }
 
-    printf("\n tid:%d %d %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
+    //printf("\n tid:%d %d %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
 
     pthread_barrier_wait(arg->barrier_total);
 
