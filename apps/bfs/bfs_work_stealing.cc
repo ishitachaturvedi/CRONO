@@ -363,23 +363,23 @@ int main(int argc, char** argv)
       pthread_join(thread_handle[j],NULL);
    }
 
-   printf("\nThreads Joined!");
+   //printf("\nThreads Joined!");
 
-   clock_gettime(CLOCK_REALTIME, &requestEnd);
-   double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
-   printf( "\nTime Taken:\n%lf seconds", accum );
+   // clock_gettime(CLOCK_REALTIME, &requestEnd);
+   // double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
+   // printf( "\nTime Taken:\n%lf seconds", accum );
 
    // Print results
-   printf("Execution completed.\n");
+   //printf("Execution completed.\n");
 
-    printf("Final distances:\n");
-    for (int i = 0; i < N; i++)
-    {
-        if (D[i] != 0)
-        {
-            printf("Vertex %d: Distance %d\n", i, D[i]);
-        }
-    }
+   //  printf("Final distances:\n");
+   //  for (int i = 0; i < N; i++)
+   //  {
+   //      if (D[i] != 0)
+   //      {
+   //          printf("Vertex %d: Distance %d\n", i, D[i]);
+   //      }
+   //  }
 
    // printf("Iterations done by each thread:\n");
    // for (int i = 0; i < P; i++)
