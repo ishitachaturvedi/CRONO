@@ -18,7 +18,7 @@
 
 #define GEM5
 
-int first_thread_work = 0;
+float first_thread_work = 0;
 
 #ifdef GEM5
 #include "gem5/m5ops.h"
@@ -106,7 +106,7 @@ void* do_work(void* args)
       stop = (int)(largest_d * first_thread_work) + (int)(tid * partition_size);
    }
 
-   //printf("\n tid:%d %d %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
+   //printf("\n tid:%d start %d stop %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
 
    pthread_barrier_wait(arg->barrier_total);
 
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
    FILE *file0 = NULL;
    int N = 0;
    int DEG = 0;
-   int first_thread_work_arg = 1;
+   float first_thread_work_arg = 1;
    //whether read from file or generate synthetic
    const int select = atoi(argv[1]);
 
@@ -202,9 +202,9 @@ int main(int argc, char** argv)
    {
       N = atoi(argv[3]);
       DEG = atoi(argv[4]);
-      first_thread_work_arg = atoi(argv[5]);
+      first_thread_work_arg = atof(argv[5]);
       first_thread_work = first_thread_work_arg;
-      printf("\nGraph with Parameters: N:%d DEG:%d work by tid 0:%d\n",N,DEG,first_thread_work);
+      printf("\nGraph with Parameters: N:%d DEG:%d work by tid 0:%f\n",N,DEG,first_thread_work);
    } else {
       first_thread_work = N / P1;
    }
