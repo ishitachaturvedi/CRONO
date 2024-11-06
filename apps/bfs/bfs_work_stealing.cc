@@ -16,7 +16,7 @@
 // #define DEBUG              1
 #define BILLION 1E9
 
-//#define GEM5
+#define GEM5
 
 int first_thread_work = 0;
 
@@ -86,7 +86,7 @@ void* do_work(void* args)
    double partition_size;
 
    #ifdef GEM5
-   m5_numiter(threadArgs->thread_id);
+   m5_numiter(arg->tid);
    #endif
 
    // Calculate partition ranges
