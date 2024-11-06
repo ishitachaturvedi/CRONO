@@ -16,7 +16,13 @@
 // #define DEBUG              1
 #define BILLION 1E9
 
-#define first_thread_work   0.5
+//#define GEM5
+
+int first_thread_work = 0;
+
+#ifdef GEM5
+#include "gem5/m5ops.h"
+#endif
 
 //Thread Argument Structure
 typedef struct
@@ -56,97 +62,101 @@ pthread_t   thread_handle[1024];
 //Primary Parallel Function
 void* do_work(void* args)
 {
-    //Thread variables and arguments
-    volatile thread_arg_t* arg = (thread_arg_t*) args;
-    int tid                  = arg->tid;  //thread id
-    int P                    = arg->P;    //Max threads
-    volatile int* Q          = arg->Q;    //set/unset array
-    int* D                   = arg->D;    //coloring array
-    //int** W                  = arg->W;
-    int** W_index            = arg->W_index;  //graph structure
-    int v = 0;
-    int iter = 0;
+   //Thread variables and arguments
+   volatile thread_arg_t* arg = (thread_arg_t*) args;
+   int tid                  = arg->tid;  //thread id
+   int P                    = arg->P;    //Max threads
+   volatile int* Q          = arg->Q;    //set/unset array
+   int* D                   = arg->D;    //coloring array
+   //int** W                  = arg->W;
+   int** W_index            = arg->W_index;  //graph structure
+   int v = 0;
+   int iter = 0;
 
-    // For precision work allocation
-    double P_d = P;
-    double tid_d = tid;
-    double largest_d = largest + 1.0;
+   // For precision work allocation
+   double P_d = P;
+   double tid_d = tid;
+   double largest_d = largest + 1.0;
 
-    int start = 0;
-    int stop = 0;
+   int start = 0;
+   int stop = 0;
 
-    *(arg->iterations) = 0;
+   *(arg->iterations) = 0;
 
-    double partition_size;
+   double partition_size;
 
-    // Calculate partition ranges
-    if (tid == 0) {
-        // First thread gets 1/4 of the range
-        start = 0;
-        if(P == 1)
-        {
-           stop = largest_d;
-        } else {
-            stop = (int)(largest_d * first_thread_work);
-        }
-    } else {
-        // Remaining threads share the rest
-        partition_size = (largest_d - (largest_d * first_thread_work)) / (P - 1);
-        start = (int)(largest_d * first_thread_work) + (int)((tid - 1) * partition_size);
-        stop = (int)(largest_d * first_thread_work) + (int)(tid * partition_size);
-    }
+   #ifdef GEM5
+   m5_numiter(threadArgs->thread_id);
+   #endif
 
-    //printf("\n tid:%d %d %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
+   // Calculate partition ranges
+   if (tid == 0) {
+      // First thread gets 1/4 of the range
+      start = 0;
+      if(P == 1)
+      {
+         stop = largest_d;
+      } else {
+         stop = (int)(largest_d * first_thread_work);
+      }
+   } else {
+      // Remaining threads share the rest
+      partition_size = (largest_d - (largest_d * first_thread_work)) / (P - 1);
+      start = (int)(largest_d * first_thread_work) + (int)((tid - 1) * partition_size);
+      stop = (int)(largest_d * first_thread_work) + (int)(tid * partition_size);
+   }
 
-    pthread_barrier_wait(arg->barrier_total);
+   //printf("\n tid:%d %d %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
 
-    while (terminate == 0)
-    {   
-        for (v = start; v < stop; v++)
-        {
-            if (exist[v] == 0)
-                continue; // if not in graph
+   pthread_barrier_wait(arg->barrier_total);
 
-            if (D[v] == 0 || D[v] == 2) // already colored
-                continue;
+   while (terminate == 0)
+   {   
+      for (v = start; v < stop; v++)
+      {
+         if (exist[v] == 0)
+               continue; // if not in graph
 
-            for (int i = 0; i < edges[v]; i++)
-            {   
-                int neighbor = W_index[v][i];
-                if (Q[neighbor] == 1) // Uncomment for test and test and set
-                {
-                    pthread_mutex_lock(&locks[neighbor]);
-                    if (Q[neighbor] == 1) // if unset then set
-                        Q[neighbor] = 0; // Can be set to Parent
-                    temporary[neighbor] = 1;
-                    pthread_mutex_unlock(&locks[neighbor]);
-                }
-            }
-        }
-        //if(tid==0) printf("\n %d",Q[largest]);
+         if (D[v] == 0 || D[v] == 2) // already colored
+               continue;
 
-        pthread_barrier_wait(arg->barrier_total);
-    
-        // Update colors    
-        for (v = start; v < stop; v++)
-        {
-            if (D[v] == 1)
-                D[v] = 2;
-            else
-                D[v] = temporary[v];
-        }
- 
-        // Termination Condition
-        if (Q[largest] == 0 || iter >= Total)
-            terminate = 1;
-        iter++;
-        (*(arg->iterations))++; // Increment iteration counter
-        pthread_barrier_wait(arg->barrier_total);
-    }
-    //printf("\n %d %d",tid,terminate);
-    pthread_barrier_wait(arg->barrier_total);
+         for (int i = 0; i < edges[v]; i++)
+         {   
+               int neighbor = W_index[v][i];
+               if (Q[neighbor] == 1) // Uncomment for test and test and set
+               {
+                  pthread_mutex_lock(&locks[neighbor]);
+                  if (Q[neighbor] == 1) // if unset then set
+                     Q[neighbor] = 0; // Can be set to Parent
+                  temporary[neighbor] = 1;
+                  pthread_mutex_unlock(&locks[neighbor]);
+               }
+         }
+      }
+      //if(tid==0) printf("\n %d",Q[largest]);
 
-    return NULL;
+      pthread_barrier_wait(arg->barrier_total);
+   
+      // Update colors    
+      for (v = start; v < stop; v++)
+      {
+         if (D[v] == 1)
+               D[v] = 2;
+         else
+               D[v] = temporary[v];
+      }
+
+      // Termination Condition
+      if (Q[largest] == 0 || iter >= Total)
+         terminate = 1;
+      iter++;
+      (*(arg->iterations))++; // Increment iteration counter
+      pthread_barrier_wait(arg->barrier_total);
+   }
+   //printf("\n %d %d",tid,terminate);
+   pthread_barrier_wait(arg->barrier_total);
+
+   return NULL;
 }
 
 
@@ -156,6 +166,7 @@ int main(int argc, char** argv)
    FILE *file0 = NULL;
    int N = 0;
    int DEG = 0;
+   int first_thread_work_arg = 1;
    //whether read from file or generate synthetic
    const int select = atoi(argv[1]);
 
@@ -191,7 +202,11 @@ int main(int argc, char** argv)
    {
       N = atoi(argv[3]);
       DEG = atoi(argv[4]);
-      printf("\nGraph with Parameters: N:%d DEG:%d\n",N,DEG);
+      first_thread_work_arg = atoi(argv[5]);
+      first_thread_work = first_thread_work_arg;
+      printf("\nGraph with Parameters: N:%d DEG:%d work by tid 0:%d\n",N,DEG,first_thread_work);
+   } else {
+      first_thread_work = N / P1;
    }
 
    if (DEG > N)
@@ -349,37 +364,44 @@ int main(int argc, char** argv)
    struct timespec requestStart, requestEnd;
    clock_gettime(CLOCK_REALTIME, &requestStart);
 
+   #ifdef GEM5
+      m5_dump_reset_stats(0,0);
+   #endif
+
    //Spawn Threads
-   for(int j = 1; j < P; j++) {
+   for(int j = 0; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
-   do_work((void*) &thread_arg[0]);  //master thread initializes itself
 
    //Join threads
-   for(int j = 1; j < P; j++) { //mul = mul*2;
+   for(int j = 0; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
 
-   //printf("\nThreads Joined!");
+   #ifdef GEM5
+      m5_dump_reset_stats(0,0);
+   #endif
 
-   // clock_gettime(CLOCK_REALTIME, &requestEnd);
-   // double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
-   // printf( "\nTime Taken:\n%lf seconds", accum );
+   printf("\nThreads Joined!");
+
+   clock_gettime(CLOCK_REALTIME, &requestEnd);
+   double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
+   printf( "\nTime Taken:\n%lf seconds", accum );
 
    // Print results
-   //printf("Execution completed.\n");
+   printf("Execution completed.\n");
 
-   //  printf("Final distances:\n");
-   //  for (int i = 0; i < N; i++)
-   //  {
-   //      if (D[i] != 0)
-   //      {
-   //          printf("Vertex %d: Distance %d\n", i, D[i]);
-   //      }
-   //  }
+   // printf("Final distances:\n");
+   // for (int i = 0; i < N; i++)
+   // {
+   //    if (D[i] != 0)
+   //    {
+   //       printf("Vertex %d: Distance %d\n", i, D[i]);
+   //    }
+   // }
 
    // printf("Iterations done by each thread:\n");
    // for (int i = 0; i < P; i++)
