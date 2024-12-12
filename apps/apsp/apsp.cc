@@ -49,6 +49,7 @@ int start = 64;
 int P_global = 256;
 thread_arg_t thread_arg[1024];
 pthread_t   thread_handle[1024];  //MAX threads and pthread handlers
+int node = 0;
 
 //Primary Parallel Function
 void* do_work(void* args)
@@ -63,8 +64,6 @@ void* do_work(void* args)
    const int DEG            = arg->DEG;     //Edges per Vertex
    int v                    = 0;            //current vertex
    P_global                 = start;
-
-   int node = 0;
 
    pthread_barrier_wait(arg->barrier_total);
 

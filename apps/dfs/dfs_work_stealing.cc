@@ -118,7 +118,7 @@ void* do_work(void* args) {
          for(int i = 0; i < edges[v]; i++)
          {   
             int neighbor = W_index[v][i];
-
+ 
             if(Q[neighbor]==0)
                continue;
 
