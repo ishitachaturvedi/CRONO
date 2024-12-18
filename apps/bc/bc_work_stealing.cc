@@ -17,7 +17,7 @@
 
 #define CHUNK_SIZE 10
 
-//#define GEM5
+#define GEM5
 
 float first_thread_work = 0;
 int iter = 0;
@@ -56,7 +56,6 @@ void init_weights(int N, int DEG, int** W, int** W_index);
 int min = INT_MAX;
 int min_index = 0;         //For local mins
 pthread_mutex_t lock;
-pthread_mutex_t locks[4194304];
 int u = 0;                  //next best vertex
 int local_min_buffer[1024];
 int global_min_buffer;
@@ -297,7 +296,7 @@ int main(int argc, char** argv)
          exit(EXIT_FAILURE);
       }
    }
-   
+
    //Initialize random graph
    init_weights(N, DEG, W, W_index);
    for(int i = 0;i<P;i++)
@@ -313,9 +312,6 @@ int main(int argc, char** argv)
    pthread_barrier_init(&barrier_total, NULL, P1);
    pthread_barrier_init(&barrier, NULL, P1);
    pthread_mutex_init(&lock, NULL);
-
-   for(int i=0; i<2097152; i++)
-      pthread_mutex_init(&locks[i], NULL);
 
    //initialize_single_source(D, Q, 0, N);
 
@@ -344,6 +340,8 @@ int main(int argc, char** argv)
 
    // Enable Graphite performance and energy models
    //CarbonEnableModels();
+
+
 
    #ifdef GEM5
       m5_dump_reset_stats(0,0);

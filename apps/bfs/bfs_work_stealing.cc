@@ -16,7 +16,7 @@
 // #define DEBUG              1
 #define BILLION 1E9
 
-//#define GEM5
+#define GEM5
 
 float first_thread_work = 0;
 
