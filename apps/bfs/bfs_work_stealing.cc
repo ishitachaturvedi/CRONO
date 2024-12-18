@@ -369,12 +369,14 @@ int main(int argc, char** argv)
    #endif
 
    //Spawn Threads
-   for(int j = 0; j < P; j++) {
+   for(int j = 1; j < P; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
+
+   do_work((void*)&thread_arg[0]);
 
    //Join threads
    for(int j = 0; j < P; j++) { //mul = mul*2;
