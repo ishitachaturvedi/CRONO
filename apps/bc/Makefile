@@ -1,5 +1,5 @@
 
-TRGS = bc bc_non_partitioned
+TRGS = bc bc_non_partitioned bc_work_stealing
 
 LIBS += -lpthread -lrt
 
@@ -8,7 +8,7 @@ LIBS += -lpthread -lrt
 ##BOOST_FLAGS = -I$(BOOST_PATH)/include -L$(BOOST_PATH)/lib -lboost_graph
 
 CXXFLAGS = -g --std=c++0x -O3
-CXXFLAGS += -Wall -Werror
+CXXFLAGS += -Wall 
 
 all: $(TRGS)
 
@@ -21,4 +21,4 @@ clean:
 	rm -f $(TRGS) *.o *.dot
 
 %: %.cc ;
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $< -o $@ -static -I/home/ishita/gem5-GPU_killer/include -L/home/ishita/gem5-GPU_killer/util/m5/build/arm64/out -lm5 $(LIBS)

@@ -17,7 +17,7 @@
 
 #define CHUNK_SIZE 10
 
-//#define GEM5
+#define GEM5
 
 float first_thread_work = 0;
 int iter = 0;

@@ -1,14 +1,14 @@
 
-TRGS = apsp
+TRGS = apsp apsp_work_stealing
 
-LIBS += -lpthread -lrt
+LIBS += -lpthread -lrt 
 
 ##BOOST_PATH = /run/pkg/boost-/1.53.0-gcc_4.7.3
 
 ##BOOST_FLAGS = -I$(BOOST_PATH)/include -L$(BOOST_PATH)/lib -lboost_graph
 
 CXXFLAGS = -g --std=c++0x -O3 -static
-CXXFLAGS += -Wall -Werror
+CXXFLAGS += -Wall -Werror 
 
 all: $(TRGS)
 
@@ -20,4 +20,4 @@ clean:
 	rm -f $(TRGS) *.o *.dot
 
 %: %.cc ;
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $< -o $@ -static -I/home/ishita/gem5-GPU_killer/include -L/home/ishita/gem5-GPU_killer/util/m5/build/arm64/out -lm5 $(LIBS)
