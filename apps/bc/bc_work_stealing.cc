@@ -17,7 +17,7 @@
 
 #define CHUNK_SIZE 10
 
-#define GEM5
+//#define GEM5
 
 float first_thread_work = 0;
 int iter = 0;
@@ -241,10 +241,11 @@ int main(int argc, char** argv)
    start = P1;
    P = P1;
 
-   float first_thread_work_arg = 1;
+   // float first_thread_work_arg = 1;
 
-   first_thread_work_arg = atof(argv[4]);
-   first_thread_work = first_thread_work_arg;
+   // first_thread_work_arg = atof(argv[4]);
+   // printf("STEP1b\n");
+   // first_thread_work = first_thread_work_arg;
 
    if (DEG > N)
    {
@@ -349,12 +350,14 @@ int main(int argc, char** argv)
    #endif
 
    //Spawn Threads
-   for(int j = 0; j < P1; j++) {
+   for(int j = 1; j < P1; j++) {
       pthread_create(thread_handle+j,
             NULL,
             do_work,
             (void*)&thread_arg[j]);
    }
+
+   do_work((void*)&thread_arg[0]);
 
    //Join Threads
    for(int j = 0; j < P1; j++) { //mul = mul*2;
@@ -376,10 +379,10 @@ int main(int argc, char** argv)
 
    //printf("\ndistance:%d \n",D[N-1]);
 
-   for(int i = 0; i < N; i++) {
-     printf(" %f ", delta[i]);
-   }
-   printf("\n");
+   // for(int i = 0; i < N; i++) {
+   //   printf(" %f ", delta[i]);
+   // }
+   // printf("\n");
    
    return 0;
 }
