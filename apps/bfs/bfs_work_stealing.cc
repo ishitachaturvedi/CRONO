@@ -16,15 +16,15 @@
 // #define DEBUG              1
 #define BILLION 1E9
 
-#define GEM5
-
 pthread_mutex_t task_queue_mutex;
 int task_queue = 0;
 
 int CHUNK_SIZE = 10;
 
+#define GEM5
+
 #ifdef GEM5
-#include "gem5/m5ops.h"
+#include "m5ops.h"
 #endif
 
 //Thread Argument Structure
