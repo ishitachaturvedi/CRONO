@@ -18,7 +18,10 @@
 
 #define GEM5
 
-float first_thread_work = 0;
+pthread_mutex_t task_queue_mutex;
+int task_queue = 0;
+
+int CHUNK_SIZE = 10;
 
 #ifdef GEM5
 #include "gem5/m5ops.h"
@@ -62,101 +65,54 @@ pthread_t   thread_handle[1024];
 //Primary Parallel Function
 void* do_work(void* args)
 {
-   //Thread variables and arguments
-   volatile thread_arg_t* arg = (thread_arg_t*) args;
-   int tid                  = arg->tid;  //thread id
-   int P                    = arg->P;    //Max threads
-   volatile int* Q          = arg->Q;    //set/unset array
-   int* D                   = arg->D;    //coloring array
-   //int** W                  = arg->W;
-   int** W_index            = arg->W_index;  //graph structure
-   int v = 0;
-   int iter = 0;
+   thread_arg_t *arg = (thread_arg_t *) args;
+   int *Q = arg->Q;
+   int *D = arg->D;
+   int **W_index = arg->W_index;
+   int N = arg->N;
 
-   // For precision work allocation
-   double P_d = P;
-   double tid_d = tid;
-   double largest_d = largest + 1.0;
+   while (terminate == 0) {
+      int start;
+      pthread_mutex_lock(&task_queue_mutex);
+      start = task_queue;
+      task_queue += CHUNK_SIZE;
+      pthread_mutex_unlock(&task_queue_mutex);
 
-   int start = 0;
-   int stop = 0;
+      if (start >= N) break;
+      int end = (start + CHUNK_SIZE - 1) > N ? N : (start + CHUNK_SIZE - 1);
 
-   *(arg->iterations) = 0;
+      for (int v = start; v < end; v++) {
+         if (exist[v] == 0) continue;
+         if (D[v] == 0 || D[v] == 2) continue;
 
-   double partition_size;
-
-   #ifdef GEM5
-   m5_numiter(arg->tid);
-   #endif
-
-   // Calculate partition ranges
-   if (tid == 0) {
-      // First thread gets 1/4 of the range
-      start = 0;
-      if(P == 1)
-      {
-         stop = largest_d;
-      } else {
-         stop = (int)(largest_d * first_thread_work);
-      }
-   } else {
-      // Remaining threads share the rest
-      partition_size = (largest_d - (largest_d * first_thread_work)) / (P - 1);
-      start = (int)(largest_d * first_thread_work) + (int)((tid - 1) * partition_size);
-      stop = (int)(largest_d * first_thread_work) + (int)(tid * partition_size);
-   }
-
-   //printf("\n tid:%d start %d stop %d largest_d %f partition_size %f",tid,start,stop,largest_d,partition_size);
-
-   // pthread_barrier_wait(arg->barrier_total);
-
-   while (terminate == 0)
-   {   
-      for (v = start; v < stop; v++)
-      {
-         if (exist[v] == 0)
-               continue; // if not in graph
-
-         if (D[v] == 0 || D[v] == 2) // already colored
-               continue;
-
-         for (int i = 0; i < edges[v]; i++)
-         {   
+         for (int i = 0; i < edges[v]; i++) {
                int neighbor = W_index[v][i];
-               if (Q[neighbor] == 1) // Uncomment for test and test and set
-               {
+               if (Q[neighbor] == 1) {
                   pthread_mutex_lock(&locks[neighbor]);
-                  if (Q[neighbor] == 1) // if unset then set
-                     Q[neighbor] = 0; // Can be set to Parent
+                  if (Q[neighbor] == 1) {
+                     Q[neighbor] = 0;
+                  }
                   temporary[neighbor] = 1;
                   pthread_mutex_unlock(&locks[neighbor]);
                }
          }
       }
-      //if(tid==0) printf("\n %d",Q[largest]);
 
       pthread_barrier_wait(arg->barrier_total);
-   
-      // Update colors    
-      for (v = start; v < stop; v++)
-      {
+
+      for (int v = start; v < end; v++) {
          if (D[v] == 1)
                D[v] = 2;
          else
                D[v] = temporary[v];
       }
 
-      // Termination Condition
-      if (Q[largest] == 0 || iter >= Total)
-         terminate = 1;
-      iter++;
-      (*(arg->iterations))++; // Increment iteration counter
+      if (Q[largest] == 0 || *(arg->iterations) >= Total) terminate = 1;
+      (*(arg->iterations))++;
+
       pthread_barrier_wait(arg->barrier_total);
    }
-   //printf("\n %d %d",tid,terminate);
-   pthread_barrier_wait(arg->barrier_total);
-
-   return NULL;
+   pthread_exit(NULL);
 }
 
 
@@ -166,7 +122,6 @@ int main(int argc, char** argv)
    FILE *file0 = NULL;
    int N = 0;
    int DEG = 0;
-   float first_thread_work_arg = 1;
    //whether read from file or generate synthetic
    const int select = atoi(argv[1]);
 
@@ -202,12 +157,8 @@ int main(int argc, char** argv)
    {
       N = atoi(argv[3]);
       DEG = atoi(argv[4]);
-      first_thread_work_arg = atof(argv[5]);
-      first_thread_work = first_thread_work_arg;
-      printf("\nGraph with Parameters: N:%d DEG:%d work by tid 0:%f\n",N,DEG,first_thread_work);
-   } else {
-      first_thread_work = N / P1;
-   }
+      printf("\nGraph with Parameters: N:%d DEG:%d\n",N,DEG);
+   } 
 
    if (DEG > N)
    {
@@ -361,8 +312,8 @@ int main(int argc, char** argv)
    //CarbonEnableModels();
 
    //CPU Time
-   struct timespec requestStart, requestEnd;
-   clock_gettime(CLOCK_REALTIME, &requestStart);
+   // struct timespec requestStart, requestEnd;
+   // clock_gettime(CLOCK_REALTIME, &requestStart);
 
    #ifdef GEM5
       m5_dump_reset_stats(0,0);
@@ -389,42 +340,12 @@ int main(int argc, char** argv)
 
    printf("\nThreads Joined!");
 
-   clock_gettime(CLOCK_REALTIME, &requestEnd);
-   double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
-   printf( "\nTime Taken:\n%lf seconds", accum );
+   // clock_gettime(CLOCK_REALTIME, &requestEnd);
+   // double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
+   // printf( "\nTime Taken:\n%lf seconds", accum );
 
-   // Print results
-   printf("Execution completed.\n");
-
-   // printf("Final distances:\n");
-   // for (int i = 0; i < N; i++)
-   // {
-   //    if (D[i] != 0)
-   //    {
-   //       printf("Vertex %d: Distance %d\n", i, D[i]);
-   //    }
-   // }
-
-   // printf("Iterations done by each thread:\n");
-   // for (int i = 0; i < P; i++)
-   // {
-   //    printf("Thread %d: %d iterations\n", i, *(thread_arg[i].iterations));
-   //    free(thread_arg[i].iterations); // Free allocated memory
-   // }
-
-   // Disable Graphite performance and energy models
-   //CarbonDisableModels();
-
-   //Print Result
-   // FILE * pfile;
-   // pfile = fopen("myfile.txt","w");
-   // for(int j=0;j<=largest;j++)
-   // {
-   //   if(exist[j]==1) //printf("\n %d ",Q[j]);
-   //     fprintf(pfile,"\n %d %d ", j,Q[j]);
-   // }
-   // printf("\n");
-   // fclose(pfile);
+   // // Print results
+   // printf("Execution completed.\n");
 
    return 0;
 }
