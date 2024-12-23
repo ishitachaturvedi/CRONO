@@ -16,6 +16,12 @@ using std::list;
 
 pthread_mutex_t shared_queue_lock;
 
+#define GEM5
+
+#ifdef GEM5
+#include "m5ops.h"
+#endif
+
 // #define DEBUG           1
 #define INF             100000000
 
@@ -414,6 +420,10 @@ int main(int argc, char** argv)
    // Enable Graphite performance and power models
    //CarbonEnableModels();
 
+   #ifdef GEM5
+      m5_dump_reset_stats(0,0);
+   #endif
+
    //Create threads
    for (int i = 1; i < NUM_THREADS; i++)
    {
@@ -431,6 +441,10 @@ int main(int argc, char** argv)
    {
       pthread_join(thread_handle[i], NULL);
    }
+
+   #ifdef GEM5
+      m5_dump_reset_stats(0,0);
+   #endif
 
    // Disable Graphite performance and power models
    //CarbonDisableModels();

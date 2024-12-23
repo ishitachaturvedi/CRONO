@@ -1,5 +1,5 @@
 
-TRGS = tsp
+TRGS = tsp_work_stealing
 
 LIBS += -lpthread -lrt
 
@@ -14,4 +14,4 @@ clean:
 	rm -f $(TRGS) *.o *.dot
 
 %: %.cc ;
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $< -o $@ -I/home/ishita/gem5-GPU_killer/include -L/home/ishita/gem5-GPU_killer/util/m5/build/arm64/out -lm5 $(LIBS)
