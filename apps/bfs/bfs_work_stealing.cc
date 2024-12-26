@@ -16,18 +16,28 @@
 // #define DEBUG              1
 #define BILLION 1E9
 
+int CHUNK_SIZE = 10;
+
+//#define GEM5
+
+#ifdef GEM5
+#include "gem5/m5ops.h"
+#endif
+
+// Define global variables for the task queue
 pthread_mutex_t task_queue_mutex;
 int task_queue = 0;
 
-int CHUNK_SIZE = 10;
+// Declare other global variables
+extern int largest;
+extern int terminate;
+extern int Total;
+extern int* exist;
+extern int* edges;
+extern int** W_index;
+extern int* temporary;
+extern pthread_mutex_t* locks;
 
-#define GEM5
-
-#ifdef GEM5
-#include "m5ops.h"
-#endif
-
-//Thread Argument Structure
 typedef struct
 {
    int*      Q;
@@ -62,57 +72,67 @@ int largest=0;
 thread_arg_t thread_arg[1024];
 pthread_t   thread_handle[1024];
 
-//Primary Parallel Function
+// The work-stealing function
 void* do_work(void* args)
 {
-   thread_arg_t *arg = (thread_arg_t *) args;
-   int *Q = arg->Q;
-   int *D = arg->D;
-   int **W_index = arg->W_index;
-   int N = arg->N;
+   // Thread variables and arguments
+   volatile thread_arg_t* arg = (thread_arg_t*) args;
+   int tid                  = arg->tid;  // Thread ID
+   int P                    = arg->P;    // Number of threads
+   volatile int* Q          = arg->Q;    // Set/unset array
+   int* D                   = arg->D;    // Coloring array
+   int** W_index            = arg->W_index;  // Graph structure
+   int v = 0;
+   int iter = 0;
+
+   pthread_barrier_wait(arg->barrier_total);
 
    while (terminate == 0) {
       int start;
       pthread_mutex_lock(&task_queue_mutex);
       start = task_queue;
-      task_queue += CHUNK_SIZE;
+      task_queue += 10;
       pthread_mutex_unlock(&task_queue_mutex);
 
-      if (start >= N) break;
-      int end = (start + CHUNK_SIZE - 1) > N ? N : (start + CHUNK_SIZE - 1);
+      if (start >= largest + 1) break;
+      int stop = (start + 9) > largest + 1 ? largest + 1 : (start + 9);
 
-      for (int v = start; v < end; v++) {
-         if (exist[v] == 0) continue;
-         if (D[v] == 0 || D[v] == 2) continue;
+      for (v = start; v < stop; v++) {
+         if (exist[v] == 0) continue;                              // If not in graph
+         if (D[v] == 0 || D[v] == 2) continue;                    // Already colored
 
          for (int i = 0; i < edges[v]; i++) {
-               int neighbor = W_index[v][i];
-               if (Q[neighbor] == 1) {
-                  pthread_mutex_lock(&locks[neighbor]);
-                  if (Q[neighbor] == 1) {
-                     Q[neighbor] = 0;
-                  }
-                  temporary[neighbor] = 1;
-                  pthread_mutex_unlock(&locks[neighbor]);
-               }
+            int neighbor = W_index[v][i];
+            if (Q[neighbor] == 1) {                       // Test and set
+               pthread_mutex_lock(&locks[neighbor]);
+               if (Q[neighbor] == 1)                       // If unset then set
+                  Q[neighbor] = 0;                        // Can be set to Parent
+               temporary[neighbor] = 1;
+               pthread_mutex_unlock(&locks[neighbor]);
+            }
          }
       }
 
       pthread_barrier_wait(arg->barrier_total);
 
-      for (int v = start; v < end; v++) {
+      // Update colors	
+      for (v = start; v < stop; v++) {
          if (D[v] == 1)
-               D[v] = 2;
+            D[v] = 2;
          else
-               D[v] = temporary[v];
+            D[v] = temporary[v];
       }
 
-      if (Q[largest] == 0 || *(arg->iterations) >= Total) terminate = 1;
-      (*(arg->iterations))++;
-
+      // Termination Condition
+      if (Q[largest] == 0 || iter >= Total)
+         terminate = 1;
+      iter++;
       pthread_barrier_wait(arg->barrier_total);
    }
-   pthread_exit(NULL);
+
+   pthread_barrier_wait(arg->barrier_total);
+
+   return NULL;
 }
 
 
@@ -262,6 +282,8 @@ int main(int argc, char** argv)
       printf("\nFile Read, Largest Vertex:%d",largest);
    }
 
+   printf("HELLO1\n");
+
    //Generate Random graph
    if(select==0)
    {
@@ -269,11 +291,15 @@ int main(int argc, char** argv)
       largest = N-1; //largest vertex id
    }
 
+   printf("HELLO2\n");
+
    //Synchronization variables
    pthread_barrier_init(&barrier_total, NULL, P);
    pthread_barrier_init(&barrier, NULL, P);
    locks = (pthread_mutex_t*) malloc((largest+16) * sizeof(pthread_mutex_t));
    pthread_mutex_init(&lock, NULL);
+
+   printf("HELLO3\n");
 
    for(int i=0; i<largest+1; i++)
    {
@@ -289,6 +315,8 @@ int main(int argc, char** argv)
       }
    }
    //printf("\n %d %d %d",N,largest,Total);
+
+   printf("HELLO4\n");
 
    //Initialize Data Structures
    initialize_single_source(D, Q, 0, N);
@@ -308,6 +336,8 @@ int main(int argc, char** argv)
       thread_arg[j].iterations = (int*)malloc(sizeof(int)); // Allocate memory for iteration count
    }
 
+   printf("HELLO5\n");
+
    // Enable Graphite performance and energy models
    //CarbonEnableModels();
 
@@ -318,6 +348,9 @@ int main(int argc, char** argv)
    #ifdef GEM5
       m5_dump_reset_stats(0,0);
    #endif
+
+   printf("HELLO6\n");
+   fflush(stdout);
 
    //Spawn Threads
    for(int j = 1; j < P; j++) {
@@ -330,15 +363,19 @@ int main(int argc, char** argv)
    do_work((void*)&thread_arg[0]);
 
    //Join threads
-   for(int j = 0; j < P; j++) { //mul = mul*2;
+   for(int j = 1; j < P; j++) { //mul = mul*2;
       pthread_join(thread_handle[j],NULL);
    }
+
+   printf("HELLO7\n");
+   fflush(stdout);
 
    #ifdef GEM5
       m5_dump_reset_stats(0,0);
    #endif
 
    printf("\nThreads Joined!");
+   fflush(stdout);
 
    // clock_gettime(CLOCK_REALTIME, &requestEnd);
    // double accum = ( requestEnd.tv_sec - requestStart.tv_sec ) + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / BILLION;
