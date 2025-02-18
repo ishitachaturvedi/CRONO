@@ -1,11 +1,10 @@
 
-TRGS = dfs
+TRGS = dfs dfs_work_stealing
 
 LIBS += -lpthread -lrt
 
 CXXFLAGS = -g --std=c++0x -O3
-CXXFLAGS += -Wall -Werror
-
+CXXFLAGS += -Wall 
 all: $(TRGS)
 
 dfs: dfs.cc

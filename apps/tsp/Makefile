@@ -4,7 +4,7 @@ TRGS = tsp_work_stealing
 LIBS += -lpthread -lrt -static
 
 CXXFLAGS = -g --std=c++0x -O3
-CXXFLAGS += -Wall -Werror
+CXXFLAGS += 
 
 all: $(TRGS)
 

@@ -19,7 +19,7 @@ pthread_mutex_t shared_queue_lock;
 #define GEM5
 
 #ifdef GEM5
-#include "m5ops.h"
+#include "gem5/m5ops.h"
 #endif
 
 // #define DEBUG           1
@@ -42,7 +42,7 @@ int _best_tour_cost ;
 int _best_tid;
 pthread_mutex_t _lock;
 
-#define CHUNK_SIZE 10
+#define CHUNK_SIZE 1
 
 //Graph Creation
 void initCities(int NUM_CITIES)
@@ -162,6 +162,7 @@ class ThreadData
       int getTid() const          { return _tid; }
       PartialTour* getBestTour()  { return _best_tour;  }
       int getNumCities() const    { return _NUM_CITIES; }
+      int numIters;
 
    private:
       int _tid;
@@ -175,6 +176,7 @@ class ThreadData
 {
    _best_tour = new PartialTour(NUM_CITIES, 0);
    _best_tour->setCost(INF);
+   numIters = 0;
 }
 
 ThreadData::~ThreadData()
@@ -258,6 +260,10 @@ void* threadWork(void* targ)
    PartialTour* best_tour  = arg->getBestTour();
    int NUM_CITIES          = arg->getNumCities();
 
+   #ifdef GEM5
+   m5_numiter(tid);
+   #endif
+
 #ifdef DEBUG
    printf("Starting Thread: %i\n", tid);
 #endif
@@ -292,6 +298,7 @@ void* threadWork(void* targ)
       }
 
       while (!work_queue.empty()) {
+         arg->numIters++;
          PartialTour* tour = work_queue.front();
          work_queue.pop_front();
          doWork(tid, work_queue, tour, best_tour, NUM_CITIES);
@@ -452,7 +459,7 @@ int main(int argc, char** argv)
    //Print TSP Data
    for (int i = 0 ; i < NUM_THREADS; i++)
    {
-      printf("Thread: %i, Final Best Tour:\n", i);
+      printf("Thread: %i, Final Best Tour: numIters %d\n", i,thread_data[i]->numIters++);
       thread_data[i]->getBestTour()->print();
       printf("\n");
    }

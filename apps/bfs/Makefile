@@ -1,9 +1,9 @@
 
-TRGS = bfs bfs_atomic
+TRGS = bfs bfs_atomic bfs_work_stealing_copy  bfs_work_stealing
 
-LIBS += -lpthread -lrt
+LIBS +=  -static -lpthread 
 
-CXXFLAGS = -g --std=c++0x -O3
+CXXFLAGS = -g -O3
 CXXFLAGS += -Wall
 
 all: $(TRGS)
@@ -16,4 +16,4 @@ clean:
 	rm -f myfile.txt
 
 %: %.cc ;
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $< -o $@  $(LIBS) -I/home/ishita/gem5-GPU_killer/include -L/home/ishita/gem5-GPU_killer/util/m5/build/arm64/out -lm5

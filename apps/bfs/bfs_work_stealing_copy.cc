@@ -27,7 +27,6 @@ int CHUNK_SIZE = 10;
 // Define global variables for the task queue
 pthread_mutex_t task_queue_mutex;
 int task_queue = 0;
-int task_queue1 = 0;
 
 // Declare other global variables
 extern int largest;
@@ -88,8 +87,6 @@ void* do_work(void* args)
 
    pthread_barrier_wait(arg->barrier_total);
 
-   bool to_run = true;
-
    while (terminate == 0) {
       int start;
       pthread_mutex_lock(&task_queue_mutex);
@@ -97,49 +94,45 @@ void* do_work(void* args)
       task_queue += 10;
       pthread_mutex_unlock(&task_queue_mutex);
 
-      if (start >= largest + 1) 
-      {
-         to_run = false;
-      }
+      if (start >= largest + 1) break;
       int stop = (start + 9) > largest + 1 ? largest + 1 : (start + 9);
 
-      if(to_run) {
-         for (v = start; v < stop; v++) {
-            if (exist[v] == 0) continue;                              // If not in graph
-            if (D[v] == 0 || D[v] == 2) continue;                    // Already colored
+      for (v = start; v < stop; v++) {
+         if (exist[v] == 0) continue;                              // If not in graph
+         if (D[v] == 0 || D[v] == 2) continue;                    // Already colored
 
-            for (int i = 0; i < edges[v]; i++) {
-               int neighbor = W_index[v][i];
-               if (Q[neighbor] == 1) {                       // Test and set
-                  pthread_mutex_lock(&locks[neighbor]);
-                  if (Q[neighbor] == 1)                       // If unset then set
-                     Q[neighbor] = 0;                        // Can be set to Parent
-                  temporary[neighbor] = 1;
-                  pthread_mutex_unlock(&locks[neighbor]);
-               }
+         for (int i = 0; i < edges[v]; i++) {
+            int neighbor = W_index[v][i];
+            if (Q[neighbor] == 1) {                       // Test and set
+               pthread_mutex_lock(&locks[neighbor]);
+               if (Q[neighbor] == 1)                       // If unset then set
+                  Q[neighbor] = 0;                        // Can be set to Parent
+               temporary[neighbor] = 1;
+               pthread_mutex_unlock(&locks[neighbor]);
             }
          }
       }
 
       pthread_barrier_wait(arg->barrier_total);
 
-      if(to_run) {
-         // Update colors	
-         for (v = start; v < stop; v++) {
-            if (D[v] == 1)
-               D[v] = 2;
-            else
-               D[v] = temporary[v];
-         }
+      // Update colors	
+      for (v = start; v < stop; v++) {
+         if (D[v] == 1)
+            D[v] = 2;
+         else
+            D[v] = temporary[v];
       }
 
       // Termination Condition
       if (Q[largest] == 0 || iter >= Total)
          terminate = 1;
       iter++;
-
       pthread_barrier_wait(arg->barrier_total);
    }
+
+   pthread_barrier_wait(arg->barrier_total);
+
+   return NULL;
 }
 
 
